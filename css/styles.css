@@ -1,15 +1,3 @@
-Berikut adalah revisi kode CSS untuk `main` grid layout dan responsivitas mobile Anda.
-
-Perubahan utama yang dilakukan:
-
-1. **Desktop Layout**: `#header` (full width di atas), `#transaction-form-section` memanjang penuh dari kiri ke kanan di baris kedua (`grid-column: 1 / -1`), lalu `#transaction-list-section` di sebelah kiri dan `#chart-section` (spending by category) di sebelah kanannya pada baris ketiga.
-2. **Mobile Layout**: Menggunakan `@media (max-width: 768px)` untuk mengubah grid menjadi 1 kolom penuh (`1fr`) sehingga semua card tersusun rapi secara vertikal ke bawah tanpa terpotong di layar HP.
-
----
-
-### Kode CSS Revisi
-
-```css
 /* ============================================================
    Expense & Budget Visualizer — styles.css (Revised Layout)
    ============================================================ */
@@ -364,5 +352,3 @@ main {
     font-size: 1.75rem;
   }
 }
-
-```

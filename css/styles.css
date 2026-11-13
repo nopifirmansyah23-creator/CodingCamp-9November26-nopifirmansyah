@@ -1,5 +1,17 @@
+Berikut adalah revisi kode CSS untuk `main` grid layout dan responsivitas mobile Anda.
+
+Perubahan utama yang dilakukan:
+
+1. **Desktop Layout**: `#header` (full width di atas), `#transaction-form-section` memanjang penuh dari kiri ke kanan di baris kedua (`grid-column: 1 / -1`), lalu `#transaction-list-section` di sebelah kiri dan `#chart-section` (spending by category) di sebelah kanannya pada baris ketiga.
+2. **Mobile Layout**: Menggunakan `@media (max-width: 768px)` untuk mengubah grid menjadi 1 kolom penuh (`1fr`) sehingga semua card tersusun rapi secara vertikal ke bawah tanpa terpotong di layar HP.
+
+---
+
+### Kode CSS Revisi
+
+```css
 /* ============================================================
-   Expense & Budget Visualizer — styles.css
+   Expense & Budget Visualizer — styles.css (Revised Layout)
    ============================================================ */
 
 /* ── Reset & Base ─────────────────────────────────────────── */
@@ -18,11 +30,11 @@ body {
   min-height: 100vh;
 }
 
-/* ── Layout Wrapper ───────────────────────────────────────── */
+/* ── Layout Wrapper (Desktop Grid) ────────────────────────── */
 main {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto auto auto;
   gap: 24px;                /* ≥16px whitespace between sections — Req 7.3 */
   max-width: 960px;
   margin: 0 auto;
@@ -30,7 +42,6 @@ main {
 }
 
 /* ── Section Card (shared style for all four panels) ─────── */
-/* Each section gets a distinct background + border to satisfy Req 7.3 */
 #header,
 #transaction-form-section,
 #transaction-list-section,
@@ -73,7 +84,7 @@ main {
 
 /* ── Input Form (#transaction-form-section) ───────────────── */
 #transaction-form-section {
-  grid-column: 1;
+  grid-column: 1 / -1;     /* Full width from left to right */
 }
 
 #transaction-form-section h2,
@@ -133,7 +144,7 @@ main {
   min-height: 1.2em;        /* reserve space to avoid layout jump */
 }
 
-/* Submit button — Req 7.5: only allowed interactive controls */
+/* Submit button */
 #transaction-form button[type="submit"] {
   width: 100%;
   padding: 11px 16px;
@@ -158,8 +169,8 @@ main {
 
 /* ── Transaction List (#transaction-list-section) ─────────── */
 #transaction-list-section {
-  grid-column: 2;
-  grid-row: 2;
+  grid-column: 1;           /* Di sebelah kiri pada desktop */
+  grid-row: 3;
 }
 
 #transaction-list {
@@ -182,7 +193,7 @@ main {
   border-radius: 3px;
 }
 
-/* Placeholder text — shown when list is empty (Req 2.4) */
+/* Placeholder text */
 .placeholder {
   font-size: 0.875rem;      /* 14px */
   color: #9ca3af;
@@ -209,7 +220,6 @@ main {
   border-radius: 8px;
 }
 
-/* Transaction item — name takes the remaining space */
 .tx-name {
   flex: 1;
   font-weight: 500;
@@ -219,16 +229,14 @@ main {
   text-overflow: ellipsis;
 }
 
-/* Amount */
 .tx-amount {
   font-weight: 600;
   color: #0f172a;
   white-space: nowrap;
 }
 
-/* Category badge */
 .tx-category {
-  font-size: 0.75rem;       /* 12px — decorative badge, not body text */
+  font-size: 0.75rem;       /* 12px */
   font-weight: 500;
   padding: 2px 8px;
   border-radius: 999px;
@@ -250,11 +258,10 @@ main {
   color: #9d174d;
 }
 
-/* Per-transaction delete button — Req 7.5 */
 .btn-delete {
   flex-shrink: 0;
   padding: 4px 10px;
-  font-size: 0.875rem;      /* 14px — meets Req 7.4 minimum */
+  font-size: 0.875rem;      /* 14px */
   font-weight: 500;
   color: #dc2626;
   background: #fef2f2;
@@ -271,7 +278,8 @@ main {
 
 /* ── Chart (#chart-section) ───────────────────────────────── */
 #chart-section {
-  grid-column: 1 / -1;     /* full width below the two panels */
+  grid-column: 2;           /* Di sebelah kanan pada desktop */
+  grid-row: 3;
 }
 
 #chart-container {
@@ -287,15 +295,13 @@ main {
   max-height: 320px;
 }
 
-/* Chart empty-state placeholder — shown when no data (Req 4.5) */
 #chart-placeholder {
-  font-size: 0.875rem;      /* 14px */
+  font-size: 0.875rem;
   color: #9ca3af;
   text-align: center;
   margin-top: 80px;
 }
 
-/* CDN failure fallback message */
 #chart-unavailable {
   font-size: 0.875rem;
   color: #6b7280;
@@ -304,7 +310,6 @@ main {
 }
 
 /* ── Toast / Error Banner (#toast) ────────────────────────── */
-/* Positioned at the bottom of the viewport, hidden by default — Req design */
 #toast {
   position: fixed;
   bottom: 24px;
@@ -314,7 +319,7 @@ main {
   max-width: calc(100vw - 32px);
   padding: 14px 20px;
   border-radius: 10px;
-  font-size: 0.9375rem;     /* 15px ≥ 14px */
+  font-size: 0.9375rem;
   font-weight: 500;
   text-align: center;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
@@ -322,47 +327,42 @@ main {
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-/* Hidden state (default) */
 #toast.hidden {
   opacity: 0;
   pointer-events: none;
   transform: translateX(-50%) translateY(12px);
 }
 
-/* Error — red */
 #toast.toast-error {
   background: #dc2626;
   color: #ffffff;
   border: 1px solid #b91c1c;
 }
 
-/* Warning — amber */
 #toast.toast-warning {
   background: #d97706;
   color: #ffffff;
   border: 1px solid #b45309;
 }
 
-/* ── Responsive: stack to single column on small screens ──── */
-@media (max-width: 640px) {
+/* ── Responsive: Stack to single column on mobile screens (≤ 768px) ──── */
+@media (max-width: 768px) {
   main {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
   }
 
-  #transaction-form-section {
-    grid-column: 1;
-  }
-
-  #transaction-list-section {
-    grid-column: 1;
-    grid-row: auto;
-  }
-
+  #header,
+  #transaction-form-section,
+  #transaction-list-section,
   #chart-section {
-    grid-column: 1;
+    grid-column: 1 !important;
+    grid-row: auto !important;
   }
 
   #balance {
     font-size: 1.75rem;
   }
 }
+
+```

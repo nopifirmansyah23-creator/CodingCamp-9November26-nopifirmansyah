@@ -6,6 +6,41 @@
     <title>Expense &amp; Budget Visualizer</title>
     <link rel="stylesheet" href="css/styles.css" />
     <script src="js/app.js" defer></script>
+    <style>
+      main {
+        max-width: 900px;
+        margin: 20px auto;
+        padding: 0 20px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+      #transaction-form-section {
+        grid-column: 1 / -1;
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .bottom-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        grid-column: 1 / -1;
+      }
+      #transaction-list-section,
+      #chart-section {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      @media (max-width: 768px) {
+        .bottom-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
   </head>
   <body>
 

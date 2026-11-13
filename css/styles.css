@@ -1,5 +1,5 @@
 /* ============================================================
-   Expense & Budget Visualizer — styles.css (Revised Layout)
+   Expense & Budget Visualizer — styles.css (Updated Layout)
    ============================================================ */
 
 /* ── Reset & Base ─────────────────────────────────────────── */
@@ -11,7 +11,7 @@
 
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 16px;          /* base ≥ 14px per Req 7.4 */
+  font-size: 16px;
   line-height: 1.5;
   color: #1a1a2e;
   background-color: #f0f2f5;
@@ -23,10 +23,10 @@ main {
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: auto auto auto;
-  gap: 24px;                /* ≥16px whitespace between sections — Req 7.3 */
+  gap: 24px;
   max-width: 960px;
   margin: 0 auto;
-  padding: 24px 16px 80px; /* bottom padding clears the toast */
+  padding: 24px 16px 80px;
 }
 
 /* ── Section Card (shared style for all four panels) ─────── */
@@ -42,7 +42,7 @@ main {
 
 /* ── Balance Display (#header) ───────────────────────────── */
 #header {
-  grid-column: 1 / -1;     /* full width on top */
+  grid-column: 1 / -1;     /* Full width on top */
   text-align: center;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   color: #ffffff;
@@ -50,14 +50,14 @@ main {
 }
 
 #header h1 {
-  font-size: 1.5rem;        /* 24px */
+  font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.5px;
   margin-bottom: 8px;
 }
 
 .balance-label {
-  font-size: 0.875rem;      /* 14px — meets Req 7.4 */
+  font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 1px;
   opacity: 0.75;
@@ -65,20 +65,21 @@ main {
 }
 
 #balance {
-  font-size: 2.25rem;       /* 36px — prominent display */
+  font-size: 2.25rem;
   font-weight: 800;
-  color: #4ade80;           /* green accent */
+  color: #4ade80;
 }
 
 /* ── Input Form (#transaction-form-section) ───────────────── */
 #transaction-form-section {
   grid-column: 1 / -1;     /* Full width from left to right */
+  grid-row: 2;
 }
 
 #transaction-form-section h2,
 #transaction-list-section h2,
 #chart-section h2 {
-  font-size: 1.125rem;      /* 18px */
+  font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: 20px;
   color: #374151;
@@ -94,14 +95,14 @@ main {
 }
 
 .form-group label {
-  font-size: 0.875rem;      /* 14px */
+  font-size: 0.875rem;
   font-weight: 500;
   color: #374151;
 }
 
 .form-group input,
 .form-group select {
-  font-size: 1rem;          /* 16px */
+  font-size: 1rem;
   padding: 10px 12px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
@@ -118,21 +119,18 @@ main {
   background: #ffffff;
 }
 
-/* Invalid state — toggled by JS when validation fails */
 .form-group input.invalid,
 .form-group select.invalid {
   border-color: #ef4444;
   background: #fef2f2;
 }
 
-/* Inline field error messages */
 .field-error {
-  font-size: 0.875rem;      /* 14px — meets Req 7.4 minimum */
+  font-size: 0.875rem;
   color: #dc2626;
-  min-height: 1.2em;        /* reserve space to avoid layout jump */
+  min-height: 1.2em;
 }
 
-/* Submit button */
 #transaction-form button[type="submit"] {
   width: 100%;
   padding: 11px 16px;
@@ -157,18 +155,19 @@ main {
 
 /* ── Transaction List (#transaction-list-section) ─────────── */
 #transaction-list-section {
-  grid-column: 1;           /* Di sebelah kiri pada desktop */
+  grid-column: 1;           /* Di sebelah kiri */
   grid-row: 3;
+  display: flex;
+  flex-direction: column;
 }
 
 #transaction-list {
   list-style: none;
   overflow-y: auto;
-  max-height: 340px;        /* scrollable per Req 2.2 */
-  padding-right: 4px;       /* space for scrollbar */
+  max-height: 340px;
+  padding-right: 4px;
 }
 
-/* Scrollbar styling (Webkit) */
 #transaction-list::-webkit-scrollbar {
   width: 6px;
 }
@@ -181,22 +180,20 @@ main {
   border-radius: 3px;
 }
 
-/* Placeholder text */
 .placeholder {
-  font-size: 0.875rem;      /* 14px */
+  font-size: 0.875rem;
   color: #9ca3af;
   text-align: center;
   padding: 24px 0;
 }
 
-/* Individual transaction list item */
 #transaction-list li:not(.placeholder) {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 12px 10px;
   border-bottom: 1px solid #f1f5f9;
-  font-size: 0.9375rem;     /* 15px ≥ 14px */
+  font-size: 0.9375rem;
 }
 
 #transaction-list li:not(.placeholder):last-child {
@@ -224,7 +221,7 @@ main {
 }
 
 .tx-category {
-  font-size: 0.75rem;       /* 12px */
+  font-size: 0.75rem;
   font-weight: 500;
   padding: 2px 8px;
   border-radius: 999px;
@@ -249,7 +246,7 @@ main {
 .btn-delete {
   flex-shrink: 0;
   padding: 4px 10px;
-  font-size: 0.875rem;      /* 14px */
+  font-size: 0.875rem;
   font-weight: 500;
   color: #dc2626;
   background: #fef2f2;
@@ -266,8 +263,10 @@ main {
 
 /* ── Chart (#chart-section) ───────────────────────────────── */
 #chart-section {
-  grid-column: 2;           /* Di sebelah kanan pada desktop */
+  grid-column: 2;           /* Di sebelah kanan (lebarnya otomatis sama karena grid 1fr 1fr) */
   grid-row: 3;
+  display: flex;
+  flex-direction: column;
 }
 
 #chart-container {
@@ -275,12 +274,14 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  flex: 1;
   min-height: 280px;
 }
 
 #expense-chart {
-  max-width: 320px;
-  max-height: 320px;
+  max-width: 280px;
+  max-height: 280px;
 }
 
 #chart-placeholder {

@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StorageManager, Validator, BalanceDisplay &amp; ChartManager Tests</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+    h1   { font-size: 1.4rem; margin-bottom: 1rem; }
+    h2   { font-size: 1.1rem; margin: 1.5rem 0 0.4rem; border-bottom: 1px solid #ddd; padding-bottom: 0.25rem; }
+    #summary { font-weight: bold; font-size: 1rem; padding: 0.5rem 0.75rem; border-radius: 4px; display: inline-block; margin-bottom: 1rem; }
+    #summary.all-pass { background: #d4edda; color: #155724; }
+    #summary.has-fail  { background: #f8d7da; color: #721c24; }
+    .result { margin: 0.2rem 0; font-size: 0.9rem; }
+    .pass   { color: #155724; }
+    .fail   { color: #721c24; }
+    .detail { margin-left: 1.4rem; font-size: 0.82rem; color: #555; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <h1>StorageManager, Validator, BalanceDisplay &amp; ChartManager Tests</h1>
+  <div id="summary"></div>
+  <div id="output"></div>
+
+<script>
+// ─────────────────────────────────────────────
+// Re-declared units under test (copied verbatim from js/app.js)
+// ─────────────────────────────────────────────
+
+const STORAGE_KEY = 'expense_budget_visualizer_v1';
+const CATEGORIES  = ['Food', 'Transport', 'Fun'];
+
+class ParseError extends Error {
+  constructor(msg) { super(msg); this.name = 'ParseError'; }
+}
+
+class SchemaWarning extends Error {
+  constructor(msg, validEntries) {
+    super(msg);
+    this.name = 'SchemaWarning';
+    this.validEntries = validEntries;
+  }
+}
+
+class StorageError extends Error {
+  constructor(msg) { super(msg); this.name = 'StorageError'; }
+}
+
+const StorageManager = {
+  isAvailable() {
+    const probeKey = '__storage_probe__';
+    try {
+      localStorage.setItem(probeKey, '1');
+      localStorage.getItem(probeKey);
+      localStorage.removeItem(probeKey);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  save(transactions) {
+    try {
+      const json = JSON.stringify(transactions);
+      localStorage.setItem(STORAGE_KEY, json);
+    } catch (err) {
+      throw new StorageError(`Failed to save transactions: ${err.message}`);
+    }
+  },
+
+  load() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw === null) return [];
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new ParseError('Stored data is not valid JSON and could not be loaded.');
+    }
+
+    if (!Array.isArray(parsed)) {
+      throw new ParseError('Stored data has an unexpected format and could not be loaded.');
+    }
+
+    const valid = parsed.filter((entry) => {
+      if (!entry || typeof entry !== 'object') return false;
+      if (typeof entry.id !== 'string' || entry.id.trim() === '') return false;
+      if (typeof entry.name !== 'string' || entry.name.trim() === '') return false;
+      if (typeof entry.amount !== 'number' || !isFinite(entry.amount) || entry.amount <= 0) return false;
+      if (!CATEGORIES.includes(entry.category)) return false;
+      return true;
+    });
+
+    if (valid.length !== parsed.length) {
+      throw new SchemaWarning('Some saved entries were invalid and have been ignored.', valid);
+    }
+
+    return valid;
+  },
+};
+
+const Validator = {
+  isValidName(value) {
+    if (typeof value !== 'string') return false;
+    const trimmed = value.trim();
+    return trimmed.length >= 1 && trimmed.length <= 100;
+  },
+
+  isValidAmount(value) {
+    if (typeof value === 'string' && value.trim() === '') return false;
+    const num = Number(value);
+    if (!isFinite(num) || isNaN(num)) return false;
+    return num >= 0.01 && num <= 999_999_999.99;
+  },
+
+  validate(name, amount, category) {
+    const errors = {};
+    if (!this.isValidName(name)) {
+      errors.name = 'Item name is required and must be 1–100 characters.';
+    }
+    if (!this.isValidAmount(amount)) {
+      errors.amount = 'Amount must be a number between 0.01 and 999,999,999.99.';
+    }
+    if (!CATEGORIES.includes(category)) {
+      errors.category = 'Please select a valid category (Food, Transport, or Fun).';
+    }
+    return { valid: Object.keys(errors).length === 0, errors };
+  },
+};
+
+// ─────────────────────────────────────────────
+// Micro test framework
+// ─────────────────────────────────────────────
+
+const results = [];
+let currentGroup = '';
+
+function describe(label, fn) {
+  currentGroup = label;
+  fn();
+}
+
+function it(label, fn) {
+  try {
+    fn();
+    results.push({ group: currentGroup, label, passed: true });
+  } catch (err) {
+    results.push({ group: currentGroup, label, passed: false, error: err.message });
+  }
+}
+
+function expect(value) {
+  return {
+    toBe(expected) {
+      if (value !== expected) {
+        throw new Error(`Expected ${JSON.stringify(expected)}, received ${JSON.stringify(value)}`);
+      }
+    },
+    toEqual(expected) {
+      const a = JSON.stringify(value);
+      const b = JSON.stringify(expected);
+      if (a !== b) {
+        throw new Error(`Expected ${b}, received ${a}`);
+      }
+    },
+    toThrow(ErrorClass) {
+      if (typeof value !== 'function') {
+        throw new Error('toThrow requires a function');
+      }
+      let threw = false;
+      let caughtError = null;
+      try { value(); } catch (err) { threw = true; caughtError = err; }
+      if (!threw) {
+        throw new Error(`Expected function to throw ${ErrorClass.name}, but it did not throw`);
+      }
+      if (!(caughtError instanceof ErrorClass)) {
+        throw new Error(
+          `Expected function to throw ${ErrorClass.name}, but threw ${caughtError.constructor.name}: ${caughtError.message}`
+        );
+      }
+      return { error: caughtError };
+    },
+  };
+}
+
+// ─────────────────────────────────────────────
+// localStorage mock helper
+// ─────────────────────────────────────────────
+
+function withMockStorage(storeFn, cb) {
+  const store = storeFn ? storeFn() : {};
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    get() {
+      return {
+        getItem:    (k)      => Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null,
+        setItem:    (k, v)   => { store[k] = String(v); },
+        removeItem: (k)      => { delete store[k]; },
+      };
+    },
+  });
+  try { cb(store); } finally {
+    // Restore real localStorage
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() { return window._realLocalStorage; },
+    });
+  }
+}
+
+// Cache real localStorage before any tests run
+Object.defineProperty(window, '_realLocalStorage', {
+  value: window.localStorage,
+  writable: false,
+  configurable: false,
+});
+
+// ─────────────────────────────────────────────
+// StorageManager Tests
+// ─────────────────────────────────────────────
+
+describe('StorageManager', () => {
+
+  it('load() returns [] when localStorage has no data', () => {
+    withMockStorage(() => ({}), () => {
+      expect(StorageManager.load()).toEqual([]);
+    });
+  });
+
+  it('load() returns valid transactions from properly stored JSON', () => {
+    const txns = [
+      { id: 'abc-1', name: 'Coffee', amount: 3.50, category: 'Food' },
+      { id: 'abc-2', name: 'Bus',    amount: 2.00, category: 'Transport' },
+    ];
+    withMockStorage(() => ({ [STORAGE_KEY]: JSON.stringify(txns) }), () => {
+      expect(StorageManager.load()).toEqual(txns);
+    });
+  });
+
+  it('load() throws ParseError on corrupt JSON', () => {
+    withMockStorage(() => ({ [STORAGE_KEY]: 'not-json{{{' }), () => {
+      expect(() => StorageManager.load()).toThrow(ParseError);
+    });
+  });
+
+  it('load() throws SchemaWarning when some entries are invalid; err.validEntries has only well-formed entries', () => {
+    const good = { id: 'g1', name: 'Lunch', amount: 10, category: 'Food' };
+    const bad  = { id: '',   name: 'Oops',  amount: -1, category: 'Food' };
+    withMockStorage(() => ({ [STORAGE_KEY]: JSON.stringify([good, bad]) }), () => {
+      let caughtErr = null;
+      try { StorageManager.load(); } catch (err) { caughtErr = err; }
+      if (!(caughtErr instanceof SchemaWarning)) {
+        throw new Error(`Expected SchemaWarning, got ${caughtErr ? caughtErr.constructor.name : 'nothing'}`);
+      }
+      expect(caughtErr.validEntries).toEqual([good]);
+    });
+  });
+
+  it('save() writes correct JSON to localStorage under STORAGE_KEY', () => {
+    const txns = [{ id: 'x1', name: 'Tea', amount: 1.50, category: 'Fun' }];
+    withMockStorage(() => ({}), (store) => {
+      StorageManager.save(txns);
+      expect(store[STORAGE_KEY]).toBe(JSON.stringify(txns));
+    });
+  });
+
+  it('save() throws StorageError when setItem throws', () => {
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() {
+        return {
+          getItem:    () => null,
+          setItem:    () => { throw new Error('QuotaExceededError'); },
+          removeItem: () => {},
+        };
+      },
+    });
+    try {
+      expect(() => StorageManager.save([{ id: 'z1', name: 'X', amount: 1, category: 'Food' }]))
+        .toThrow(StorageError);
+    } finally {
+      Object.defineProperty(window, 'localStorage', {
+        configurable: true,
+        get() { return window._realLocalStorage; },
+      });
+    }
+  });
+
+  it('isAvailable() returns true when localStorage works normally', () => {
+    withMockStorage(() => ({}), () => {
+      expect(StorageManager.isAvailable()).toBe(true);
+    });
+  });
+
+  it('isAvailable() returns false when localStorage setItem throws', () => {
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() {
+        return {
+          getItem:    () => null,
+          setItem:    () => { throw new Error('SecurityError'); },
+          removeItem: () => {},
+        };
+      },
+    });
+    try {
+      expect(StorageManager.isAvailable()).toBe(false);
+    } finally {
+      Object.defineProperty(window, 'localStorage', {
+        configurable: true,
+        get() { return window._realLocalStorage; },
+      });
+    }
+  });
+
+});
+
+// ─────────────────────────────────────────────
+// Validator Tests
+// ─────────────────────────────────────────────
+
+describe('Validator', () => {
+
+  it("isValidName('') → false", () => {
+    expect(Validator.isValidName('')).toBe(false);
+  });
+
+  it("isValidName('   ') → false", () => {
+    expect(Validator.isValidName('   ')).toBe(false);
+  });
+
+  it("isValidName('a') → true", () => {
+    expect(Validator.isValidName('a')).toBe(true);
+  });
+
+  it("isValidName('a'.repeat(100)) → true", () => {
+    expect(Validator.isValidName('a'.repeat(100))).toBe(true);
+  });
+
+  it("isValidName('a'.repeat(101)) → false", () => {
+    expect(Validator.isValidName('a'.repeat(101))).toBe(false);
+  });
+
+  it('isValidAmount(0) → false', () => {
+    expect(Validator.isValidAmount(0)).toBe(false);
+  });
+
+  it('isValidAmount(0.01) → true', () => {
+    expect(Validator.isValidAmount(0.01)).toBe(true);
+  });
+
+  it('isValidAmount(999999999.99) → true', () => {
+    expect(Validator.isValidAmount(999999999.99)).toBe(true);
+  });
+
+  it('isValidAmount(1000000000) → false', () => {
+    expect(Validator.isValidAmount(1000000000)).toBe(false);
+  });
+
+  it('isValidAmount(-1) → false', () => {
+    expect(Validator.isValidAmount(-1)).toBe(false);
+  });
+
+  it('isValidAmount(NaN) → false', () => {
+    expect(Validator.isValidAmount(NaN)).toBe(false);
+  });
+
+  it("isValidAmount('abc') → false", () => {
+    expect(Validator.isValidAmount('abc')).toBe(false);
+  });
+
+  it("isValidAmount('') → false", () => {
+    expect(Validator.isValidAmount('')).toBe(false);
+  });
+
+  it("validate('Coffee', '5.00', 'Food') → { valid: true, errors: {} }", () => {
+    expect(Validator.validate('Coffee', '5.00', 'Food')).toEqual({ valid: true, errors: {} });
+  });
+
+  it("validate('', '5.00', 'Food') → has errors.name, valid: false", () => {
+    const result = Validator.validate('', '5.00', 'Food');
+    if (result.valid !== false) throw new Error('Expected valid to be false');
+    if (!result.errors.name) throw new Error('Expected errors.name to be set');
+  });
+
+  it("validate('Coffee', '0', 'Food') → has errors.amount, valid: false", () => {
+    const result = Validator.validate('Coffee', '0', 'Food');
+    if (result.valid !== false) throw new Error('Expected valid to be false');
+    if (!result.errors.amount) throw new Error('Expected errors.amount to be set');
+  });
+
+  it("validate('', '0', 'Food') → has both errors.name and errors.amount, valid: false", () => {
+    const result = Validator.validate('', '0', 'Food');
+    if (result.valid !== false) throw new Error('Expected valid to be false');
+    if (!result.errors.name)   throw new Error('Expected errors.name to be set');
+    if (!result.errors.amount) throw new Error('Expected errors.amount to be set');
+  });
+
+});
+
+// ─────────────────────────────────────────────
+// BalanceDisplay (copied verbatim from js/app.js)
+// ─────────────────────────────────────────────
+
+const BalanceDisplay = {
+  render(transactions) {
+    const sum = transactions.reduce((acc, tx) => acc + tx.amount, 0);
+    const formatted =
+      '$' +
+      sum.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    const balanceEl = document.getElementById('balance');
+    if (balanceEl) {
+      balanceEl.textContent = formatted;
+    }
+  },
+};
+
+// ─────────────────────────────────────────────
+// BalanceDisplay Tests
+// ─────────────────────────────────────────────
+
+// Minimal #balance stub used by BalanceDisplay.render during tests.
+const _balanceEl = document.createElement('p');
+_balanceEl.id = 'balance';
+document.body.appendChild(_balanceEl);
+
+/** Helper: render and return the resulting text content. */
+function renderBalance(txns) {
+  BalanceDisplay.render(txns);
+  return _balanceEl.textContent;
+}
+
+describe('BalanceDisplay', () => {
+
+  it('renders $0.00 for an empty transaction array', () => {
+    expect(renderBalance([])).toBe('$0.00');
+  });
+
+  it('renders $1.00 for a single transaction of 1', () => {
+    expect(renderBalance([{ id: '1', name: 'X', amount: 1, category: 'Food' }])).toBe('$1.00');
+  });
+
+  it('renders $1,234.56 for a sum of 1234.56', () => {
+    const txns = [
+      { id: 'a', name: 'A', amount: 1000,  category: 'Food' },
+      { id: 'b', name: 'B', amount: 234.56, category: 'Transport' },
+    ];
+    expect(renderBalance(txns)).toBe('$1,234.56');
+  });
+
+  it('renders comma-separated thousands for a large value', () => {
+    // 999999 + 999.99 = 1,000,998.99
+    const txns = [
+      { id: 'x', name: 'Big',  amount: 999999,  category: 'Fun' },
+      { id: 'y', name: 'Rest', amount: 999.99,   category: 'Food' },
+    ];
+    expect(renderBalance(txns)).toBe('$1,000,998.99');
+  });
+
+  it('always shows exactly two decimal places', () => {
+    expect(renderBalance([{ id: '1', name: 'X', amount: 5, category: 'Food' }])).toBe('$5.00');
+  });
+
+});
+
+// ─────────────────────────────────────────────
+// ChartManager (re-declared from js/app.js)
+// ─────────────────────────────────────────────
+
+let chartAvailable = false;
+let chart = null;
+
+const ChartManager = {
+  init() {
+    const canvas      = document.getElementById('expense-chart');
+    const container   = document.getElementById('chart-container');
+    const placeholder = document.getElementById('chart-placeholder');
+
+    if (!window.Chart) {
+      chartAvailable = false;
+      if (canvas)    canvas.style.display = 'none';
+      if (placeholder) {
+        placeholder.textContent = 'Chart unavailable — charting library failed to load.';
+        placeholder.style.display = '';
+      } else if (container) {
+        const msg = document.createElement('p');
+        msg.id        = 'chart-unavailable';
+        msg.className = 'placeholder';
+        msg.textContent = 'Chart unavailable — charting library failed to load.';
+        container.appendChild(msg);
+      }
+      return;
+    }
+
+    chartAvailable = true;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    chart = new window.Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels:   [],
+        datasets: [
+          {
+            data:            [],
+            backgroundColor: ['#4e79a7', '#f28e2b', '#59a14f'],
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: {
+              label(context) {
+                const value = context.parsed;
+                const formatted = '$' + value.toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                });
+                return ` ${context.label}: ${formatted}`;
+              },
+            },
+          },
+        },
+      },
+    });
+  },
+
+  render(transactions) {
+    if (!chartAvailable) return;
+
+    const canvas      = document.getElementById('expense-chart');
+    const placeholder = document.getElementById('chart-placeholder');
+
+    const totals = CATEGORIES.map((cat) =>
+      transactions.filter((tx) => tx.category === cat).reduce((sum, tx) => sum + tx.amount, 0)
+    );
+
+    const allZero = totals.every((t) => t === 0);
+
+    if (allZero) {
+      if (canvas)      canvas.style.display = 'none';
+      if (placeholder) placeholder.style.display = '';
+      return;
+    }
+
+    const activeLabels = [];
+    const activeData   = [];
+    CATEGORIES.forEach((cat, i) => {
+      if (totals[i] > 0) { activeLabels.push(cat); activeData.push(totals[i]); }
+    });
+
+    chart.data.labels             = activeLabels;
+    chart.data.datasets[0].data   = activeData;
+    chart.update();
+
+    if (canvas)      canvas.style.display = '';
+    if (placeholder) placeholder.style.display = 'none';
+  },
+};
+
+// ─────────────────────────────────────────────
+// ChartManager DOM helpers
+// ─────────────────────────────────────────────
+
+/** Create a fresh set of chart DOM nodes and return them. */
+function createChartDom() {
+  // Remove any previous chart DOM from prior tests.
+  ['chart-container', 'expense-chart', 'chart-placeholder', 'chart-unavailable'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.parentNode.removeChild(el);
+  });
+
+  const container   = document.createElement('div');
+  container.id      = 'chart-container';
+
+  const canvas      = document.createElement('canvas');
+  canvas.id         = 'expense-chart';
+
+  const placeholder = document.createElement('p');
+  placeholder.id    = 'chart-placeholder';
+  placeholder.className = 'placeholder';
+  placeholder.textContent = 'No spending data available.';
+
+  container.appendChild(canvas);
+  container.appendChild(placeholder);
+  document.body.appendChild(container);
+
+  return { container, canvas, placeholder };
+}
+
+/** Reset ChartManager module state between tests. */
+function resetChartManager() {
+  chartAvailable = false;
+  chart = null;
+}
+
+// ─────────────────────────────────────────────
+// ChartManager Tests
+// ─────────────────────────────────────────────
+
+describe('ChartManager — init() when window.Chart is undefined', () => {
+
+  it('sets chartAvailable = false and shows fallback message', () => {
+    const savedChart = window.Chart;
+    window.Chart = undefined;
+
+    const { canvas, placeholder } = createChartDom();
+    resetChartManager();
+
+    ChartManager.init();
+
+    if (chartAvailable !== false) throw new Error('Expected chartAvailable to be false');
+    if (canvas.style.display !== 'none') throw new Error('Expected canvas to be hidden');
+    if (!placeholder.textContent.includes('unavailable')) {
+      throw new Error('Expected placeholder to show unavailability message');
+    }
+
+    window.Chart = savedChart;
+  });
+
+});
+
+describe('ChartManager — render() with no transactions (placeholder shown)', () => {
+
+  it('hides canvas and shows placeholder when transactions array is empty', () => {
+    // Provide a minimal Chart stub so init() succeeds.
+    const savedChart = window.Chart;
+    window.Chart = class {
+      constructor() { this.data = { labels: [], datasets: [{ data: [] }] }; }
+      update() {}
+    };
+
+    const { canvas, placeholder } = createChartDom();
+    resetChartManager();
+    ChartManager.init();
+    ChartManager.render([]);
+
+    if (canvas.style.display !== 'none') throw new Error('Expected canvas to be hidden');
+    if (placeholder.style.display === 'none') throw new Error('Expected placeholder to be visible');
+
+    window.Chart = savedChart;
+  });
+
+});
+
+describe('ChartManager — render() with one category', () => {
+
+  it('shows only one segment label and value for a single-category input', () => {
+    const savedChart = window.Chart;
+    window.Chart = class {
+      constructor() { this.data = { labels: [], datasets: [{ data: [] }] }; }
+      update() {}
+    };
+
+    const { canvas, placeholder } = createChartDom();
+    resetChartManager();
+    ChartManager.init();
+
+    const txns = [
+      { id: '1', name: 'Burger', amount: 10, category: 'Food' },
+      { id: '2', name: 'Fries',  amount: 5,  category: 'Food' },
+    ];
+    ChartManager.render(txns);
+
+    if (chart.data.labels.length !== 1) throw new Error(`Expected 1 label, got ${chart.data.labels.length}`);
+    if (chart.data.labels[0] !== 'Food') throw new Error(`Expected 'Food', got '${chart.data.labels[0]}'`);
+    if (chart.data.datasets[0].data[0] !== 15) throw new Error(`Expected total 15, got ${chart.data.datasets[0].data[0]}`);
+    if (canvas.style.display === 'none') throw new Error('Expected canvas to be visible');
+    if (placeholder.style.display !== 'none') throw new Error('Expected placeholder to be hidden');
+
+    window.Chart = savedChart;
+  });
+
+});
+
+describe('ChartManager — render() with all three categories', () => {
+
+  it('shows three segments with correct per-category totals', () => {
+    const savedChart = window.Chart;
+    window.Chart = class {
+      constructor() { this.data = { labels: [], datasets: [{ data: [] }] }; }
+      update() {}
+    };
+
+    const { canvas, placeholder } = createChartDom();
+    resetChartManager();
+    ChartManager.init();
+
+    const txns = [
+      { id: '1', name: 'Lunch',    amount: 20, category: 'Food'      },
+      { id: '2', name: 'Bus',      amount: 5,  category: 'Transport' },
+      { id: '3', name: 'Cinema',   amount: 15, category: 'Fun'       },
+      { id: '4', name: 'Dinner',   amount: 30, category: 'Food'      },
+    ];
+    ChartManager.render(txns);
+
+    if (chart.data.labels.length !== 3) throw new Error(`Expected 3 labels, got ${chart.data.labels.length}`);
+
+    const idx = (cat) => chart.data.labels.indexOf(cat);
+    if (chart.data.datasets[0].data[idx('Food')]      !== 50) throw new Error('Food total should be 50');
+    if (chart.data.datasets[0].data[idx('Transport')] !== 5)  throw new Error('Transport total should be 5');
+    if (chart.data.datasets[0].data[idx('Fun')]       !== 15) throw new Error('Fun total should be 15');
+
+    window.Chart = savedChart;
+  });
+
+});
+
+describe('ChartManager — render() with only two categories non-zero', () => {
+
+  it('shows only two segments when one category has zero spending', () => {
+    const savedChart = window.Chart;
+    window.Chart = class {
+      constructor() { this.data = { labels: [], datasets: [{ data: [] }] }; }
+      update() {}
+    };
+
+    const { canvas, placeholder } = createChartDom();
+    resetChartManager();
+    ChartManager.init();
+
+    const txns = [
+      { id: '1', name: 'Lunch', amount: 10, category: 'Food'      },
+      { id: '2', name: 'Train', amount: 8,  category: 'Transport' },
+      // No 'Fun' transactions.
+    ];
+    ChartManager.render(txns);
+
+    if (chart.data.labels.length !== 2) throw new Error(`Expected 2 labels, got ${chart.data.labels.length}`);
+    if (chart.data.labels.includes('Fun')) throw new Error("'Fun' should not appear as it has zero spending");
+
+    window.Chart = savedChart;
+  });
+
+});
+
+// ─────────────────────────────────────────────
+// Render results to DOM
+// ─────────────────────────────────────────────
+
+(function renderResults() {
+  const output  = document.getElementById('output');
+  const summary = document.getElementById('summary');
+  const passed  = results.filter(r => r.passed).length;
+  const failed  = results.filter(r => !r.passed).length;
+
+  summary.textContent = `${passed} passed, ${failed} failed`;
+  summary.className   = failed === 0 ? 'all-pass' : 'has-fail';
+
+  // Group by describe label
+  const groups = [...new Set(results.map(r => r.group))];
+  groups.forEach(group => {
+    const h2 = document.createElement('h2');
+    h2.textContent = group;
+    output.appendChild(h2);
+
+    results.filter(r => r.group === group).forEach(r => {
+      const div = document.createElement('div');
+      div.className = 'result ' + (r.passed ? 'pass' : 'fail');
+      div.textContent = (r.passed ? '✅ PASS' : '❌ FAIL') + ' — ' + r.label;
+      output.appendChild(div);
+
+      if (!r.passed) {
+        const detail = document.createElement('div');
+        detail.className = 'detail';
+        detail.textContent = r.error;
+        output.appendChild(detail);
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

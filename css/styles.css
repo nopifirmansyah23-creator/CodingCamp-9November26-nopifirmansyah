@@ -1,0 +1,368 @@
+/* ============================================================
+   Expense & Budget Visualizer — styles.css
+   ============================================================ */
+
+/* ── Reset & Base ─────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;          /* base ≥ 14px per Req 7.4 */
+  line-height: 1.5;
+  color: #1a1a2e;
+  background-color: #f0f2f5;
+  min-height: 100vh;
+}
+
+/* ── Layout Wrapper ───────────────────────────────────────── */
+main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 24px;                /* ≥16px whitespace between sections — Req 7.3 */
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px 80px; /* bottom padding clears the toast */
+}
+
+/* ── Section Card (shared style for all four panels) ─────── */
+/* Each section gets a distinct background + border to satisfy Req 7.3 */
+#header,
+#transaction-form-section,
+#transaction-list-section,
+#chart-section {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+/* ── Balance Display (#header) ───────────────────────────── */
+#header {
+  grid-column: 1 / -1;     /* full width on top */
+  text-align: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+#header h1 {
+  font-size: 1.5rem;        /* 24px */
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 8px;
+}
+
+.balance-label {
+  font-size: 0.875rem;      /* 14px — meets Req 7.4 */
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.75;
+  margin-bottom: 4px;
+}
+
+#balance {
+  font-size: 2.25rem;       /* 36px — prominent display */
+  font-weight: 800;
+  color: #4ade80;           /* green accent */
+}
+
+/* ── Input Form (#transaction-form-section) ───────────────── */
+#transaction-form-section {
+  grid-column: 1;
+}
+
+#transaction-form-section h2,
+#transaction-list-section h2,
+#chart-section h2 {
+  font-size: 1.125rem;      /* 18px */
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 10px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  font-size: 0.875rem;      /* 14px */
+  font-weight: 500;
+  color: #374151;
+}
+
+.form-group input,
+.form-group select {
+  font-size: 1rem;          /* 16px */
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+  color: #1a1a2e;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  outline: none;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  background: #ffffff;
+}
+
+/* Invalid state — toggled by JS when validation fails */
+.form-group input.invalid,
+.form-group select.invalid {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+/* Inline field error messages */
+.field-error {
+  font-size: 0.875rem;      /* 14px — meets Req 7.4 minimum */
+  color: #dc2626;
+  min-height: 1.2em;        /* reserve space to avoid layout jump */
+}
+
+/* Submit button — Req 7.5: only allowed interactive controls */
+#transaction-form button[type="submit"] {
+  width: 100%;
+  padding: 11px 16px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #6366f1;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.1s;
+  margin-top: 4px;
+}
+
+#transaction-form button[type="submit"]:hover {
+  background: #4f46e5;
+}
+
+#transaction-form button[type="submit"]:active {
+  transform: scale(0.98);
+}
+
+/* ── Transaction List (#transaction-list-section) ─────────── */
+#transaction-list-section {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+#transaction-list {
+  list-style: none;
+  overflow-y: auto;
+  max-height: 340px;        /* scrollable per Req 2.2 */
+  padding-right: 4px;       /* space for scrollbar */
+}
+
+/* Scrollbar styling (Webkit) */
+#transaction-list::-webkit-scrollbar {
+  width: 6px;
+}
+#transaction-list::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+#transaction-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+/* Placeholder text — shown when list is empty (Req 2.4) */
+.placeholder {
+  font-size: 0.875rem;      /* 14px */
+  color: #9ca3af;
+  text-align: center;
+  padding: 24px 0;
+}
+
+/* Individual transaction list item */
+#transaction-list li:not(.placeholder) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 10px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.9375rem;     /* 15px ≥ 14px */
+}
+
+#transaction-list li:not(.placeholder):last-child {
+  border-bottom: none;
+}
+
+#transaction-list li:not(.placeholder):hover {
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+/* Transaction item — name takes the remaining space */
+.tx-name {
+  flex: 1;
+  font-weight: 500;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Amount */
+.tx-amount {
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+/* Category badge */
+.tx-category {
+  font-size: 0.75rem;       /* 12px — decorative badge, not body text */
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.tx-category[data-category="Food"] {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.tx-category[data-category="Transport"] {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.tx-category[data-category="Fun"] {
+  background: #fce7f3;
+  color: #9d174d;
+}
+
+/* Per-transaction delete button — Req 7.5 */
+.btn-delete {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 0.875rem;      /* 14px — meets Req 7.4 minimum */
+  font-weight: 500;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.btn-delete:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+}
+
+/* ── Chart (#chart-section) ───────────────────────────────── */
+#chart-section {
+  grid-column: 1 / -1;     /* full width below the two panels */
+}
+
+#chart-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 280px;
+}
+
+#expense-chart {
+  max-width: 320px;
+  max-height: 320px;
+}
+
+/* Chart empty-state placeholder — shown when no data (Req 4.5) */
+#chart-placeholder {
+  font-size: 0.875rem;      /* 14px */
+  color: #9ca3af;
+  text-align: center;
+  margin-top: 80px;
+}
+
+/* CDN failure fallback message */
+#chart-unavailable {
+  font-size: 0.875rem;
+  color: #6b7280;
+  text-align: center;
+  margin-top: 80px;
+}
+
+/* ── Toast / Error Banner (#toast) ────────────────────────── */
+/* Positioned at the bottom of the viewport, hidden by default — Req design */
+#toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 280px;
+  max-width: calc(100vw - 32px);
+  padding: 14px 20px;
+  border-radius: 10px;
+  font-size: 0.9375rem;     /* 15px ≥ 14px */
+  font-weight: 500;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+  z-index: 9999;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Hidden state (default) */
+#toast.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(12px);
+}
+
+/* Error — red */
+#toast.toast-error {
+  background: #dc2626;
+  color: #ffffff;
+  border: 1px solid #b91c1c;
+}
+
+/* Warning — amber */
+#toast.toast-warning {
+  background: #d97706;
+  color: #ffffff;
+  border: 1px solid #b45309;
+}
+
+/* ── Responsive: stack to single column on small screens ──── */
+@media (max-width: 640px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+
+  #transaction-form-section {
+    grid-column: 1;
+  }
+
+  #transaction-list-section {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  #chart-section {
+    grid-column: 1;
+  }
+
+  #balance {
+    font-size: 1.75rem;
+  }
+}
